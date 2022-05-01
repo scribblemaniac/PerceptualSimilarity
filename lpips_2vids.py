@@ -1,59 +1,81 @@
 import argparse
 import csv
+import gc
+import subprocess
 import sys
 import lpips
 import cv2
+import numpy
+import torch
 
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-v0','--video0', type=str, default='./vids/ex_ref.png')
-parser.add_argument('-v1','--video1', type=str, default='./vids/ex_p0.png')
-parser.add_argument('-o','--out', type=str, default='./vids/example_dists.csv')
-parser.add_argument('-v','--version', type=str, default='0.1')
-parser.add_argument('--use_gpu', action='store_true', help='turn on flag to use GPU')
+WIDTH = 1920
+HEIGHT = 1080
 
-opt = parser.parse_args()
+def parse_args():
+	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('reference', type=str)
+	parser.add_argument('distorted', type=str)
+	parser.add_argument('-o','--out', type=str)
+	parser.add_argument('-v','--version', type=str, default='0.1')
+	parser.add_argument('-n', '--net', type=str, choices=['alex', 'squeeze', 'vgg'], default='alex')
+	parser.add_argument('--use_gpu', action='store_true', help='turn on flag to use GPU')
 
-## Initializing the model
-loss_fn = lpips.LPIPS(net='alex',version=opt.version)
+	return parser.parse_args()
 
-if(opt.use_gpu):
-	loss_fn.cuda()
+def main():
+	opt = parse_args()
 
-cap0 = cv2.VideoCapture(opt.video0)
-if not cap0.isOpened():
-	print("Could not open video %s"%opt.video0, file=sys.stderr)
-	sys.exit(1)
-
-cap1 = cv2.VideoCapture(opt.video1)
-if not cap1.isOpened():
-	print("Could not open video %s"%opt.video1, file=sys.stderr)
-	sys.exit(1)
-
-f = open(opt.out,'w', newline='')
-writer = csv.writer(f)
-writer.writerow(["Frame","Distance"])
-
-count = 0
-while True:
-	s0, img0 = cap0.read()
-	s1, img1 = cap1.read()
-
-	if not (s0 and s1):
-		break
-
-	# Load images
-	img0 = lpips.im2tensor(img0) # RGB image from [-1,1]
-	img1 = lpips.im2tensor(img1)
+	## Initializing the model
+	loss_fn = lpips.LPIPS(net=opt.net,version=opt.version)
 
 	if(opt.use_gpu):
-		img0 = img0.cuda()
-		img1 = img1.cuda()
+		loss_fn.cuda()
 
-	# Compute distance
-	dist = loss_fn.forward(img0, img1)
-	print('Frame %d: %.3f'%(count, dist))
-	writer.writerow([count, float(dist)])
+	reference_proc = subprocess.Popen(["/usr/bin/ffmpeg", "-i", opt.reference, "-filter_complex", "[0:v]fps=24001/1001[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+	distorted_proc = subprocess.Popen(["/usr/bin/ffmpeg", "-i", opt.distorted, "-filter_complex", "[0:v]fps=24001/1001[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
-	count += 1
+	try:
+		if opt.out:
+			f = open(opt.out,'w', newline='')
+			writer = csv.writer(f)
+			writer.writerow(["Frame","Distance"])
 
-f.close()
+		count = 0
+		total = 0
+		while True:
+			reference_raw = reference_proc.stdout.read(WIDTH*HEIGHT*3)
+			if not reference_raw:
+				break
+			reference = numpy.frombuffer(reference_raw, dtype='uint8')
+			reference = reference.reshape((HEIGHT,WIDTH,3))[:,:,:3]
+			reference = lpips.im2tensor(reference)
+
+			distorted_raw = distorted_proc.stdout.read(WIDTH*HEIGHT*3)
+			if not distorted_raw:
+				break
+			distorted = numpy.frombuffer(distorted_raw, dtype='uint8')
+			distorted = distorted.reshape((HEIGHT,WIDTH,3))[:,:,:3]
+			distorted = lpips.im2tensor(distorted)
+
+			if opt.use_gpu:
+				reference = reference.cuda()
+				distorted = distorted.cuda()
+
+			# Compute distance
+			dist = loss_fn.forward(reference, distorted)
+			total += float(dist)
+			print('Frame %d: %.3f'%(count, dist))
+			writer.writerow([count, float(dist)])
+
+			del reference
+			del distorted
+			gc.collect()
+
+			count += 1
+		print("Average distance:", total/count)
+	finally:
+		if opt.out:
+			f.close()
+
+if __name__ == "__main__":
+	main()

@@ -5,7 +5,7 @@ LABEL maintainer="Seyoung Park <seyoung.arts.park@protonmail.com>"
 # This Dockerfile is forked from Tensorflow Dockerfile
 
 # Pick up some PyTorch gpu dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --allow-unauthenticated --no-install-recommends \
         build-essential \
         cuda-command-line-tools-9-0 \
         cuda-cublas-9-0 \
@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PATH /miniconda/bin:$PATH
 
 # Install PyTorch
-RUN conda update -n base conda && \ 
+RUN conda update -n base conda && \
     conda install pytorch torchvision cuda90 -c pytorch
 
 # Install PerceptualSimilarity dependencies
@@ -49,6 +49,8 @@ RUN conda install numpy scipy jupyter matplotlib && \
     apt-get install -y python-qt4 && \
     pip install opencv-python
 
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
+
 # For CUDA profiling, TensorFlow requires CUPTI. Maybe PyTorch needs this too.
 ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 
@@ -56,4 +58,3 @@ ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 EXPOSE 8888
 
 WORKDIR "/notebooks"
-
