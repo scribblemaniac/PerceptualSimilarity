@@ -63,6 +63,7 @@ Example scripts to take the distance between 2 specific images, all correspondin
 python lpips_2imgs.py -p0 imgs/ex_ref.png -p1 imgs/ex_p0.png --use_gpu
 python lpips_2dirs.py -d0 imgs/ex_dir0 -d1 imgs/ex_dir1 -o imgs/example_dists.txt --use_gpu
 python lpips_1dir_allpairs.py -d imgs/ex_dir_pair -o imgs/example_dists_pair.txt --use_gpu
+python lpips_2vids.py -v0 vids/ex_ref.mp4 -v1 ex_v0.mp4 --use_gpu
 ```
 
 #### (A.II) Python code
@@ -113,7 +114,7 @@ Script `test_dataset_model.py` evaluates a perceptual model on a subset of the d
 - `--datasets`: list the datasets to evaluate
     - if `--dataset_mode 2afc`: choices are [`train/traditional`, `train/cnn`, `val/traditional`, `val/cnn`, `val/superres`, `val/deblur`, `val/color`, `val/frameinterp`]
     - if `--dataset_mode jnd`: choices are [`val/traditional`, `val/cnn`]
-    
+
 **Perceptual similarity model flags**
 - `--model`: perceptual similarity model to use
     - `lpips` for our LPIPS learned similarity model (linear network on top of internal activations of pretrained network)
@@ -153,7 +154,7 @@ Each 2AFC subdirectory contains the following folders:
 - `p0,p1`: two distorted patches
 - `judge`: human judgments - 0 if all preferred p0, 1 if all humans preferred p1
 
-**(2) JND** Evaluators were presented with two patches - a reference and a distorted - for a limited time. They were asked if the patches were the same (identically) or different. 
+**(2) JND** Evaluators were presented with two patches - a reference and a distorted - for a limited time. They were asked if the patches were the same (identically) or different.
 
 Each set contains 3 human evaluations/example.
 - `val/traditional` [4.8k pairs]
@@ -167,7 +168,7 @@ Each JND subdirectory contains the following folders:
 
 See script `train_test_metric.sh` for an example of training and testing the metric. The script will train a model on the full training set for 10 epochs, and then test the learned metric on all of the validation sets. The numbers should roughly match the **Alex - lin** row in Table 5 in the [paper](https://arxiv.org/abs/1801.03924). The code supports training a linear layer on top of an existing representation. Training will add a subdirectory in the `checkpoints` directory.
 
-You can also train "scratch" and "tune" versions by running `train_test_metric_scratch.sh` and `train_test_metric_tune.sh`, respectively. 
+You can also train "scratch" and "tune" versions by running `train_test_metric_scratch.sh` and `train_test_metric_tune.sh`, respectively.
 
 ## Citation
 
