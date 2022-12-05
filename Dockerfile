@@ -1,55 +1,73 @@
-FROM nvidia/cuda:9.0-base-ubuntu16.04
+FROM nvidia/cuda:11.6.1-devel-ubuntu20.04
 
 LABEL maintainer="Seyoung Park <seyoung.arts.park@protonmail.com>"
 
 # This Dockerfile is forked from Tensorflow Dockerfile
 
 # Pick up some PyTorch gpu dependencies
-RUN apt-get update && apt-get install -y --allow-unauthenticated --no-install-recommends \
-        build-essential \
-        cuda-command-line-tools-9-0 \
-        cuda-cublas-9-0 \
-        cuda-cufft-9-0 \
-        cuda-curand-9-0 \
-        cuda-cusolver-9-0 \
-        cuda-cusparse-9-0 \
-        curl \
-        libcudnn7=7.1.4.18-1+cuda9.0 \
-        libfreetype6-dev \
-        libhdf5-serial-dev \
-        libpng12-dev \
-        libzmq3-dev \
-        pkg-config \
-        python \
-        python-dev \
-        rsync \
-        software-properties-common \
-        unzip \
-        && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get install -y \
+      cpio \
+      file \
+      flex \
+      g++ \
+      make \
+      patch \
+      rpm2cpio \
+      unar \
+      wget \
+      xz-utils \
+      zlib1g-dev \
+      libjpeg8-dev
 
+RUN apt-get install -y python3-pip python3-opencv
+RUN pip3 install -U pip
+RUN pip3 install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+RUN pip3 install numpy scipy jupyter matplotlib scikit-image tqdm
 
-# Install miniconda
+#RUN apt-get install -y --no-install-recommends ffmpeg
+
+WORKDIR /build
+
+RUN apt-get install -y git #libavutil-dev libavformat-dev libswresample-dev libavcodec-dev libswscale-dev
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         wget && \
     MINICONDA="Miniconda3-latest-Linux-x86_64.sh" && \
     wget --quiet https://repo.continuum.io/miniconda/$MINICONDA && \
     bash $MINICONDA -b -p /miniconda && \
     rm -f $MINICONDA
-ENV PATH /miniconda/bin:$PATH
+ENV PATH $PATH:/miniconda/bin
+RUN conda install -c conda-forge ffmpeg=4.2
+RUN wget "https://raw.githubusercontent.com/FFmpeg/FFmpeg/release/4.2/libavcodec/bsf.h" -O "/miniconda/include/libavcodec/bsf.h"
 
-# Install PyTorch
-RUN conda update -n base conda && \
-    conda install pytorch torchvision cuda90 -c pytorch
+RUN git clone https://github.com/pytorch/vision.git /build/vision && \
+  cd /build/vision && \
+  git checkout release/0.14
 
-# Install PerceptualSimilarity dependencies
-RUN conda install numpy scipy jupyter matplotlib && \
-    conda install -c conda-forge scikit-image && \
-    apt-get install -y python-qt4 && \
-    pip install opencv-python
+RUN apt-get install -y kmod
+ARG nvidia_binary_version="525.60.11"
+ARG nvidia_binary="NVIDIA-Linux-x86_64-${nvidia_binary_version}.run"
+RUN wget -q https://us.download.nvidia.com/XFree86/Linux-x86_64/${nvidia_binary_version}/${nvidia_binary} && \
+  chmod +x ${nvidia_binary} && \
+  ./${nvidia_binary} --accept-license --ui=none --no-kernel-module --no-questions && \
+  rm -rf ${nvidia_binary}
 
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
+COPY Video_Codec_SDK_12.0.16 Video_Codec
+ARG TORCHVISION_INCLUDE="/build/Video_Codec/Interface"
+ARG TORCHVISION_LIBRARY="/build/Video_Codec/Lib/linux/stubs/x86_64"
+ARG CUDA_HOME=/usr/local/cuda
+ARG FORCE_CUDA=1
+ARG TORCH_CUDA_ARCH_LIST="5.0;6.0;6.1;7.0;7.5;8.0;8.6+PTX"
+ARG CACHE_BREAKER=2
+
+RUN cd /build/vision && \
+  python3 setup.py install
+
+WORKDIR /
+
+RUN rm -rf /var/lib/apt/lists/*
 
 # For CUDA profiling, TensorFlow requires CUPTI. Maybe PyTorch needs this too.
 ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH

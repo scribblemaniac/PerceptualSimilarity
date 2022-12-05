@@ -7,9 +7,7 @@ import lpips
 import cv2
 import numpy
 import torch
-
-WIDTH = 1920
-HEIGHT = 1080
+from torchvision.io import VideoReader
 
 def parse_args():
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -31,8 +29,9 @@ def main():
 	if(opt.use_gpu):
 		loss_fn.cuda()
 
-	reference_proc = subprocess.Popen(["/usr/bin/ffmpeg", "-i", opt.reference, "-filter_complex", "[0:v]fps=24001/1001[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-	distorted_proc = subprocess.Popen(["/usr/bin/ffmpeg", "-i", opt.distorted, "-filter_complex", "[0:v]fps=24001/1001[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+	backend = "cuda" if opt.use_gpu else "video_reader"
+	reference_decoder = VideoReader(opt.reference, device=backend)
+	distorted_decoder = VideoReader(opt.distorted, device=backend)
 
 	try:
 		if opt.out:
@@ -43,29 +42,18 @@ def main():
 		count = 0
 		total = 0
 		while True:
-			reference_raw = reference_proc.stdout.read(WIDTH*HEIGHT*3)
-			if not reference_raw:
-				break
-			reference = numpy.frombuffer(reference_raw, dtype='uint8')
-			reference = reference.reshape((HEIGHT,WIDTH,3))[:,:,:3]
-			reference = lpips.im2tensor(reference)
-
-			distorted_raw = distorted_proc.stdout.read(WIDTH*HEIGHT*3)
-			if not distorted_raw:
-				break
-			distorted = numpy.frombuffer(distorted_raw, dtype='uint8')
-			distorted = distorted.reshape((HEIGHT,WIDTH,3))[:,:,:3]
-			distorted = lpips.im2tensor(distorted)
-
-			if opt.use_gpu:
-				reference = reference.cuda()
-				distorted = distorted.cuda()
+			reference = next(reference_decoder)["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
+			distorted = next(distorted_decoder)["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
+			#if opt.use_gpu:
+				#reference = reference.cuda()
+				#distorted = distorted.cuda()
 
 			# Compute distance
 			dist = loss_fn.forward(reference, distorted)
 			total += float(dist)
-			print('Frame %d: %.3f'%(count, dist))
+			#print('Frame %d: %.3f'%(count, dist))
 			writer.writerow([count, float(dist)])
+			#f.flush()
 
 			del reference
 			del distorted
