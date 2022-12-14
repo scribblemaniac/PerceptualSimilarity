@@ -41,9 +41,9 @@ def main():
 
 		count = 0
 		total = 0
-		while True:
-			reference = next(reference_decoder)["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
-			distorted = next(distorted_decoder)["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
+		for reference, distorted in zip(reference_decoder, distorted_decoder):
+			reference = reference["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
+			distorted = distorted["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
 			#if opt.use_gpu:
 				#reference = reference.cuda()
 				#distorted = distorted.cuda()
