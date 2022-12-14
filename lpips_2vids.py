@@ -29,7 +29,7 @@ def main():
 	if(opt.use_gpu):
 		loss_fn.cuda()
 
-	backend = "cuda" if opt.use_gpu else "video_reader"
+	backend = "cuda" if opt.use_gpu else "cpu"
 	reference_decoder = VideoReader(opt.reference, device=backend)
 	distorted_decoder = VideoReader(opt.distorted, device=backend)
 
