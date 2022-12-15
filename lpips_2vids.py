@@ -37,7 +37,7 @@ def main():
 		if opt.out:
 			f = open(opt.out,'w', newline='')
 			writer = csv.writer(f)
-			writer.writerow(["Frame","Distance"])
+			writer.writerow(["Frame",opt.net])
 
 		count = 0
 		total = 0
