@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.6.1-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 LABEL maintainer="Seyoung Park <seyoung.arts.park@protonmail.com>"
 
@@ -23,7 +23,7 @@ RUN apt-get install -y \
 
 RUN apt-get install -y python3-pip python3-opencv
 RUN pip3 install -U pip
-RUN pip3 install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+RUN pip3 install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu118
 RUN pip3 install numpy scipy jupyter matplotlib scikit-image tqdm
 
 #RUN apt-get install -y --no-install-recommends ffmpeg
@@ -47,7 +47,7 @@ RUN git clone https://github.com/pytorch/vision.git /build/vision && \
   git checkout release/0.14
 
 RUN apt-get install -y kmod
-ARG nvidia_binary_version="525.60.11"
+ARG nvidia_binary_version="525.89.02"
 ARG nvidia_binary="NVIDIA-Linux-x86_64-${nvidia_binary_version}.run"
 RUN wget -q https://us.download.nvidia.com/XFree86/Linux-x86_64/${nvidia_binary_version}/${nvidia_binary} && \
   chmod +x ${nvidia_binary} && \
