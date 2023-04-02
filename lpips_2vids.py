@@ -26,7 +26,7 @@ def main():
 	## Initializing the model
 	loss_fn = lpips.LPIPS(net=opt.net,version=opt.version)
 
-	if(opt.use_gpu):
+	if opt.use_gpu:
 		loss_fn.cuda()
 
 	backend = "cuda" if opt.use_gpu else "cpu"
@@ -42,9 +42,11 @@ def main():
 		count = 0
 		total = 0
 		for reference, distorted in zip(reference_decoder, distorted_decoder):
-			reference = reference["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
-			distorted = distorted["data"][numpy.newaxis, :, :, :].transpose(1, 3).transpose(2, 3)
-			#if opt.use_gpu:
+			reference = reference["data"][numpy.newaxis, :, :, :]
+			distorted = distorted["data"][numpy.newaxis, :, :, :]
+			if opt.use_gpu:
+			  reference = reference.permute((0,3,1,2))
+			  distorted = distorted.permute((0,3,1,2))
 				#reference = reference.cuda()
 				#distorted = distorted.cuda()
 
