@@ -5,6 +5,7 @@ import subprocess
 import lpips
 import pymediainfo
 import numpy
+import tqdm
 import torch
 from torchvision.io import VideoReader
 
@@ -51,6 +52,8 @@ def main():
 
 	reference_proc = subprocess.Popen(["/miniconda/bin/ffmpeg", "-i", opt.reference, "-filter_complex", f"[0:v]setpts=PTS-STARTPTS,fps={FPS}[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 	distorted_proc = subprocess.Popen(["/miniconda/bin/ffmpeg", "-i", opt.distorted, "-filter_complex", f"[0:v]setpts=PTS-STARTPTS,fps={FPS}[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+	
+	pbar = tqdm.tqdm(total=reference_info.tracks[0].frame_count)
 
 	try:
 		if opt.out:
@@ -89,10 +92,12 @@ def main():
 			gc.collect()
 
 			count += 1
+			pbar.update()
 		print("Average distance:", total/count)
 	finally:
 		if opt.out:
 			f.close()
+		pbar.close()
 
 if __name__ == "__main__":
 	main()
