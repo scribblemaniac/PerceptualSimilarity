@@ -19,12 +19,13 @@ RUN apt-get install -y \
       wget \
       xz-utils \
       zlib1g-dev \
-      libjpeg8-dev
+      libjpeg8-dev \
+      libmediainfo0v5
 
 RUN apt-get install -y python3-pip python3-opencv
 RUN pip3 install -U pip
 RUN pip3 install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu118
-RUN pip3 install numpy scipy jupyter matplotlib scikit-image tqdm
+RUN pip3 install numpy scipy jupyter matplotlib scikit-image tqdm pymediainfo
 
 #RUN apt-get install -y --no-install-recommends ffmpeg
 
