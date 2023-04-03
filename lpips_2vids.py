@@ -32,20 +32,25 @@ def main():
 	# Get video metadata
 	reference_info = pymediainfo.MediaInfo.parse(opt.reference)
 	distorted_info = pymediainfo.MediaInfo.parse(opt.distorted)
+	
 	reference_video_tracks = [t for t in reference_info.tracks if t.track_type == 'Video']
 	distorted_video_tracks = [t for t in distorted_info.tracks if t.track_type == 'Video']
 	if len(reference_video_tracks) != 1 or len(distorted_video_tracks) != 1:
 		raise Exception("Expected one video track")
-	reference_width = int(reference_video_tracks[0].video_width)
-	reference_height = int(reference_video_tracks[0].video_height)
-	reference_fps = f"{reference_video_tracks[0].frame_rate_num}/{reference_video_tracks[0].frame_rate_den}"
-	distorted_fps = f"{distorted_video_tracks[0].frame_rate_num}/{distorted_video_tracks[0].frame_rate_den}"
-	distorted_width = int(distorted_video_tracks[0].video_width)
-	distorted_height = int(distorted_video_tracks[0].video_height)
+	
+	reference_width = int(reference_video_tracks[0].width)
+	reference_height = int(reference_video_tracks[0].height)
+	reference_fps = f"{reference_video_tracks[0].framerate_num}/{reference_video_tracks[0].framerate_den}"
+	
+	distorted_width = int(distorted_video_tracks[0].width)
+	distorted_height = int(distorted_video_tracks[0].height)
+	distorted_fps = f"{distorted_video_tracks[0].framerate_num}/{distorted_video_tracks[0].framerate_den}"
+	
 	if reference_width != distorted_width or reference_height != distorted_height:
 		raise Exception("Video dimensions do not match")
 	if reference_fps != distorted_fps:
 		raise Exception("Video frame rates do not match")
+		
 	WIDTH = reference_width
 	HEIGHT = reference_height
 	FPS = reference_fps
@@ -53,7 +58,7 @@ def main():
 	reference_proc = subprocess.Popen(["/miniconda/bin/ffmpeg", "-i", opt.reference, "-filter_complex", f"[0:v]setpts=PTS-STARTPTS,fps={FPS}[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 	distorted_proc = subprocess.Popen(["/miniconda/bin/ffmpeg", "-i", opt.distorted, "-filter_complex", f"[0:v]setpts=PTS-STARTPTS,fps={FPS}[out]", "-map", "[out]", "-pix_fmt", "rgb24", "-c:v", "rawvideo", "-f", "image2pipe", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 	
-	pbar = tqdm.tqdm(total=reference_info.tracks[0].frame_count)
+	pbar = tqdm.tqdm(total=int(reference_info.tracks[0].frame_count))
 
 	try:
 		if opt.out:
